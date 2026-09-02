@@ -65,6 +65,7 @@ This stage is read-only and may run outside tmux.
 - Show and confirm the resulting `~/.zshrc` and `~/.aliases`.
 - Apply them by approved merge or backed-up replacement.
 - Validate both files and extensions. Source `zsh-syntax-highlighting` last.
+- Make zsh the default shell
 
 ## Stage 4: Install Conda
 
