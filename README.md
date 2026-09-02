@@ -3,11 +3,8 @@
 Human- (or agent-) readable instructions for bootstrapping and reconciling a
 computing environment.
 
-The instructions are inspectable and adaptable across hardware, operating
-systems, and site-specific requirements.
-
-This personal repository exposes directory names and setup preferences, but no
-passwords, tokens, private keys, or other secrets.
+This public repository records my setup preferences across machines. It includes
+directory names but no secrets.
 
 ## Quick start
 
@@ -30,6 +27,3 @@ After Codex starts, select a mode and follow [`BOOTSTRAP.md`](BOOTSTRAP.md):
 - [`BOOTSTRAP.md`](BOOTSTRAP.md): The ordered setup procedure.
 - [`sources/`](sources): Configuration sources and Slurm helper scripts to
   inspect, resolve, and apply during setup.
-
-Authentication is user-run and must not expose secrets in chat, commands, logs,
-or configuration output.
