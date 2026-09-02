@@ -6,6 +6,10 @@ The instructions in this repository are intended to remain inspectable and
 adaptable when hardware, operating systems, or site-specific requirements
 differ between servers.
 
+This is a personal bootstrap repository. It intentionally exposes personal
+directory names and setup preferences, but contains no passwords, tokens,
+private keys, or other secrets.
+
 ## Quick start
 
 ```sh
