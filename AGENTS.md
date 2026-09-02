@@ -23,13 +23,18 @@ Do not infer the mode from the system state.
 ## Operating rules
 
 - Inspect before changing anything.
-- Handle every step and substep as a multi-turn conversation.
-- Raise only one unresolved issue, decision, or confirmation request at a time.
-  Resolve or defer it before raising another.
-- For each item: inspect, report, discuss choices, propose an action, confirm,
-  act, and validate.
+- Keep the process interactive without over-prompting. Group closely related
+  checks, decisions, and confirmations when the user can evaluate them
+  together.
+- Ask related unresolved questions together when their choices are independent
+  or when seeing them together provides useful context. Separate them only when
+  one answer materially affects the next question.
+- For each item or sensible logical group: inspect, report, discuss choices,
+  propose actions, confirm consequential changes, act, and validate.
 - Stay on the current item until it and its issues are complete or deferred.
-- Do not advance to the next step or substep without the user's confirmation.
+- Do not advance to the next stage or a materially distinct item without the
+  user's confirmation. Do not require separate confirmation for every
+  substep when the user has approved the containing logical group.
 - Report relevant software, versions, paths, configuration, conflicts, and
   deviations.
 - Show proposed commands and install or configuration paths before running them.
