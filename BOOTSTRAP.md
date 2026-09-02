@@ -36,7 +36,7 @@ quick start also requires network access.
 Complete the interactive Codex sign-in, select `bootstrap`, `reconcile`, or
 `patch` mode, and continue with the requested scope.
 
-## Stage 1: Inspect the server
+## Stage 1: Inspect the system
 
 This read-only inspection stage may be performed outside tmux. Do not make
 system or configuration changes during it.

@@ -1,6 +1,6 @@
-# Research Server Setup Agent
+# Computing Environment Setup Agent
 
-Your job is to walk the user through setting up a research server.
+Your job is to walk the user through setting up a computing environment.
 
 Use [`BOOTSTRAP.md`](BOOTSTRAP.md) as the authoritative setup procedure in all
 modes. In `bootstrap` and `reconcile` modes, follow its steps and substeps in order

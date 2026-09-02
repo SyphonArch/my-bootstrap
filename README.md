@@ -1,6 +1,7 @@
 # my-bootstrap
 
-Human- (or agent-) readable instructions for bootstrapping a new research server.
+Human- (or agent-) readable instructions for bootstrapping and reconciling a
+computing environment.
 
 The instructions in this repository are intended to remain inspectable and
 adaptable when hardware, operating systems, or site-specific requirements
