@@ -537,3 +537,9 @@ EOF
       ;;
   esac
 }
+
+vpnfix() {
+  sudo dscacheutil -flushcache
+  sudo killall -HUP mDNSResponder
+}
+
