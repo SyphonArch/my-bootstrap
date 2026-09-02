@@ -96,6 +96,7 @@ ygg() {
 
   nohup rclone mount yggdrasil:syphon-yggdrasil "$HOME/yggdrasil" \
     --links \
+    --vfs-fast-fingerprint \
     --vfs-cache-mode full \
     --dir-cache-time 10s \
     --rc \
