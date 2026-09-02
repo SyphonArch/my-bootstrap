@@ -3,13 +3,11 @@
 Human- (or agent-) readable instructions for bootstrapping and reconciling a
 computing environment.
 
-The instructions in this repository are intended to remain inspectable and
-adaptable when hardware, operating systems, or site-specific requirements
-differ between servers.
+The instructions are inspectable and adaptable across hardware, operating
+systems, and site-specific requirements.
 
-This is a personal bootstrap repository. It intentionally exposes personal
-directory names and setup preferences, but contains no passwords, tokens,
-private keys, or other secrets.
+This personal repository exposes directory names and setup preferences, but no
+passwords, tokens, private keys, or other secrets.
 
 ## Quick start
 
@@ -33,10 +31,5 @@ After Codex starts, select a mode and follow [`BOOTSTRAP.md`](BOOTSTRAP.md):
 - [`sources/`](sources): Configuration sources and Slurm helper scripts to
   inspect, resolve, and apply during setup.
 
-Existing installations and configuration are inspected first. Changes must be
-shown and confirmed, configuration must be applied non-destructively, and
-unresolved `BOOTSTRAP_RESOLVE` regions must not be installed.
-
-Do not add credentials to this repository. Authentication steps are performed
-by the user and must not expose secrets in chat, commands, logs, or configuration
-output.
+Authentication is user-run and must not expose secrets in chat, commands, logs,
+or configuration output.

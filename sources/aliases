@@ -53,8 +53,7 @@ alias sn="~/slurm/nodes.sh"
 # Conda-backed Vim fallback for restricted machines.
 # ==============================================================================
 
-# This is G2 Cluster-specific. Because we can't install system-wide packages,
-# running vim will first install vim to the current conda environment if needed.
+# Install Vim in the active Conda environment when needed.
 vim() {
   if conda list | grep -q "^vim "; then
     command vim "$@"
@@ -470,7 +469,7 @@ vpn() {
 
   case "$cmd" in
     check|status)
-      # Do not pipe/chase Cisco's interactive prompt; direct subcommand behaves best.
+      # Let Cisco handle its interactive prompt.
       "$vpn_bin" stats
       ;;
     connect|up)
