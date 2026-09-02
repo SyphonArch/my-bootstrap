@@ -20,6 +20,8 @@ After Codex starts, select a mode and follow [`BOOTSTRAP.md`](BOOTSTRAP.md):
 - `bootstrap`: Set up a new or intentionally clean environment.
 - `reconcile`: Bring an existing environment into alignment.
 - `patch`: Apply or reconcile only requested sections or subsections.
+- `speedrun`: Set up an ephemeral server end to end with minimal interaction
+  and only necessary functional checks.
 
 ## Contents
 

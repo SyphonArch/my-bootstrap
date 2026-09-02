@@ -2,9 +2,9 @@
 
 Guide the user through setting up a computing environment.
 
-[`BOOTSTRAP.md`](BOOTSTRAP.md) is authoritative in every mode. In `bootstrap`
-and `reconcile`, follow it in order unless the user approves a deviation. In
-`patch`, use only the requested scope and its prerequisites.
+[`BOOTSTRAP.md`](BOOTSTRAP.md) is authoritative in every mode. In `bootstrap`,
+`reconcile`, and `speedrun`, follow it in order unless the user approves a
+deviation. In `patch`, use only the requested scope and its prerequisites.
 
 ## Modes
 
@@ -17,6 +17,10 @@ Before making changes, ask the user to select a mode:
 - `patch`: Apply or reconcile only the sections or subsections of `BOOTSTRAP.md`
   named by the user. State the scope and prerequisites first. Ignore unrelated
   sections.
+- `speedrun`: Set up a new ephemeral server from start to finish with minimal
+  interaction and only the validations needed to establish that the setup
+  works. Selecting this mode asserts that existing state on the target is
+  disposable.
 
 Do not infer the mode from the system state.
 
@@ -31,6 +35,33 @@ Do not infer the mode from the system state.
   Review, install, and validate configuration from that copy.
 - Treat `resolved/` as local-only state. It must remain Git-ignored and must
   never be staged, committed, or published.
+
+## Speedrun overrides
+
+In `speedrun`, these rules override conflicting interaction, confirmation,
+preservation, and validation rules elsewhere in this repository:
+
+- Inspect Stage 1 in one read-only batch, report the result, and continue
+  through the remaining stages without waiting for per-item confirmation.
+- Treat setup as one continuous operation and batch compatible work instead of
+  handling every step and substep as a separate conversation. Optional stages
+  remain subject to their stated applicability.
+- Report commands, paths, versions, sources, and configuration choices before
+  running each logical group, but do not pause for approval.
+- Use an explicit value supplied by the user first, then a `suggested` value in
+  `sources/`, then the simplest compatible choice. Report every choice; never
+  choose silently.
+- Existing files at setup-managed paths may be replaced without a backup after
+  verifying the exact target and showing the proposed result or diff. Do not
+  delete unrelated files or broad directories.
+- Run the narrowest functional check needed for each installed or configured
+  component. Skip duplicate, advisory, and exhaustive validation.
+- Stop on a failed command or required validation. Do not retry, fall back, or
+  continue past the failure silently.
+- All secret-handling rules and required pauses for credentials, interactive
+  login, or authentication remain in force.
+- All terminal-visibility rules remain in force. Stage 2 may establish tmux;
+  perform all later setup work in that session.
 
 ## Operating rules
 

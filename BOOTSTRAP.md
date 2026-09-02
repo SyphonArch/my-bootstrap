@@ -1,6 +1,8 @@
 # Bootstrap
 
-Follow these stages in order using the multi-turn process in `AGENTS.md`.
+Follow these stages in order using the process for the selected mode in
+`AGENTS.md`. In `speedrun`, its overrides apply to every instruction below that
+would otherwise require confirmation, backup, or additional validation.
 
 Prefer pre-installed binaries. Validate them before proposing an install,
 replacement, or upgrade. Confirm before replacing or bypassing one.
@@ -22,7 +24,7 @@ Before starting the agent, add the chosen public key to
 
 Check Git, curl, and network access; install missing tools for the platform.
 Follow the [Quick start](README.md#quick-start), complete Codex sign-in, and
-select `bootstrap`, `reconcile`, or `patch` mode.
+select `bootstrap`, `reconcile`, `patch`, or `speedrun` mode.
 
 ## Stage 1: Inspect the system
 
