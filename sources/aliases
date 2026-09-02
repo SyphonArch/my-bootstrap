@@ -164,6 +164,7 @@ yggcache() {
   local line cmd arg
   local here target size answer oldpwd
   local restore_pwd
+  local redraw=1
 
   if ! mountpoint -q "$mount"; then
     echo "Yggdrasil is not mounted"
@@ -181,7 +182,8 @@ yggcache() {
   )" || return 1
 
   while true; do
-    here="$cache_root"
+    if (( redraw )); then
+      here="$cache_root"
     [[ -n "$rel" ]] && here="$cache_root/$rel"
 
     clear
@@ -252,6 +254,9 @@ print(f"Total: {human(usage(root))}")
 PY
 
     echo
+      redraw=0
+    fi
+
     printf "yggcache:/%s> " "$rel"
 
     IFS= read -r line || return 0
@@ -276,6 +281,7 @@ PY
           if [[ -n "$rel" ]]; then
             rel="${rel:h}"
             [[ "$rel" == "." ]] && rel=""
+            redraw=1
           fi
           continue
         fi
@@ -288,6 +294,7 @@ PY
 
         if [[ -d "$here/$arg" ]]; then
           rel="${rel:+$rel/}$arg"
+          redraw=1
         else
           echo "Not a cached directory: $arg"
           sleep 1
@@ -389,6 +396,7 @@ PY
         )" || return 1
 
         echo "Evicted $arg ($size)"
+        redraw=1
         sleep 1
         ;;
 
@@ -398,12 +406,10 @@ PY
         echo "  cd ..          go up one directory"
         echo "  purge <entry>  evict a visible file or directory"
         echo "  q              quit"
-        sleep 2
         ;;
 
       *)
         echo "Commands: cd <dir>, cd .., purge <entry>, q"
-        sleep 1
         ;;
     esac
   done
