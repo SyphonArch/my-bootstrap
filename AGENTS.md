@@ -20,6 +20,18 @@ Before making changes, ask the user to select a mode:
 
 Do not infer the mode from the system state.
 
+## Resolved configuration
+
+- Keep files under `sources/` as unresolved, reusable templates. Never write
+  machine-specific resolutions into those tracked files.
+- Create each resolved configuration under `resolved/`, preserving its path
+  relative to `sources/` (for example,
+  `sources/slurm/nodes.sh` becomes `resolved/slurm/nodes.sh`).
+- Resolve markers and remove them only in the corresponding `resolved/` copy.
+  Review, install, and validate configuration from that copy.
+- Treat `resolved/` as local-only state. It must remain Git-ignored and must
+  never be staged, committed, or published.
+
 ## Operating rules
 
 - Inspect before changing anything.
