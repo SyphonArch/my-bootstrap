@@ -95,6 +95,7 @@ ygg() {
   mkdir -p "$HOME/yggdrasil" "$HOME/.cache"
 
   nohup rclone mount yggdrasil:syphon-yggdrasil "$HOME/yggdrasil" \
+    --links \
     --vfs-cache-mode full \
     --dir-cache-time 10s \
     --rc \
