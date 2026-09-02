@@ -164,7 +164,6 @@ yggcache() {
   local line cmd arg
   local here target size answer oldpwd
   local restore_pwd
-  local redraw=1
 
   if ! mountpoint -q "$mount"; then
     echo "Yggdrasil is not mounted"
@@ -181,12 +180,40 @@ yggcache() {
       python3 -c 'import json,sys; print(json.load(sys.stdin)["diskCache"]["path"])'
   )" || return 1
 
-  while true; do
-    if (( redraw )); then
-      here="$cache_root"
+  if (( $+functions[_yggcache_list] || $+functions[_yggcache_complete] ||
+        $+widgets[yggcache-complete] )); then
+    echo "yggcache helper name collision" >&2
+    return 1
+  fi
+
+  _yggcache_complete() {
+    local command="${BUFFER%% *}"
+    local -a candidates
+
+    if [[ "$BUFFER" != *" "* ]]; then
+      candidates=(cd ls purge help q)
+    else
+      case "$command" in
+        cd)
+          candidates=("$here"/*(/N:t))
+          ;;
+        purge)
+          candidates=("$here"/*(N:t))
+          ;;
+      esac
+    fi
+
+    (( ${#candidates[@]} )) && compadd -a candidates
+  }
+
+  zle -C yggcache-complete complete-word _yggcache_complete
+  bindkey -N yggcache main
+  bindkey -M yggcache '^I' yggcache-complete
+
+  _yggcache_list() {
+    here="$cache_root"
     [[ -n "$rel" ]] && here="$cache_root/$rel"
 
-    clear
     printf 'Yggdrasil cache: /%s\n\n' "$rel"
 
     python3 - "$here" <<'PY'
@@ -254,12 +281,14 @@ print(f"Total: {human(usage(root))}")
 PY
 
     echo
-      redraw=0
-    fi
+  }
 
-    printf "yggcache:/%s> " "$rel"
+  {
+    _yggcache_list
 
-    IFS= read -r line || return 0
+    while true; do
+      line=""
+      vared -M yggcache -p "yggcache:/$rel> " line || return 0
 
     [[ -z "$line" ]] && continue
 
@@ -281,30 +310,31 @@ PY
           if [[ -n "$rel" ]]; then
             rel="${rel:h}"
             [[ "$rel" == "." ]] && rel=""
-            redraw=1
+            _yggcache_list
           fi
           continue
         fi
 
         if [[ -z "$arg" || "$arg" == "." || "$arg" == */* ]]; then
           echo "Use: cd <visible-directory>"
-          sleep 1
           continue
         fi
 
         if [[ -d "$here/$arg" ]]; then
           rel="${rel:+$rel/}$arg"
-          redraw=1
+          _yggcache_list
         else
           echo "Not a cached directory: $arg"
-          sleep 1
         fi
+        ;;
+
+      ls)
+        _yggcache_list
         ;;
 
       purge)
         if [[ -z "$arg" || "$arg" == "." || "$arg" == ".." || "$arg" == */* ]]; then
           echo "Use: purge <visible-entry>"
-          sleep 1
           continue
         fi
 
@@ -312,7 +342,6 @@ PY
 
         if [[ ! -e "$target" ]]; then
           echo "Not cached: $arg"
-          sleep 1
           continue
         fi
 
@@ -373,7 +402,6 @@ PY
 
         if ! yggoff; then
           echo "Cannot purge while uploads are pending"
-          sleep 2
 
           if (( restore_pwd )); then
             cd "$oldpwd" 2>/dev/null || true
@@ -396,23 +424,28 @@ PY
         )" || return 1
 
         echo "Evicted $arg ($size)"
-        redraw=1
-        sleep 1
+        _yggcache_list
         ;;
 
       help|h|\?)
         echo "Commands:"
         echo "  cd <dir>       enter a cached directory"
         echo "  cd ..          go up one directory"
+        echo "  ls             list the current directory"
         echo "  purge <entry>  evict a visible file or directory"
         echo "  q              quit"
         ;;
 
       *)
-        echo "Commands: cd <dir>, cd .., purge <entry>, q"
+        echo "Commands: cd <dir>, cd .., ls, purge <entry>, q"
         ;;
     esac
-  done
+    done
+  } always {
+    bindkey -D yggcache
+    zle -D yggcache-complete
+    unfunction _yggcache_complete _yggcache_list
+  }
 }
 
 # ==============================================================================
