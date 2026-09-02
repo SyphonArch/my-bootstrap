@@ -159,6 +159,11 @@ print(d["uploadsQueued"] + d["uploadsInProgress"])
 
 yggcache() {
   local mount="$HOME/yggdrasil"
+  local cache_root
+  local rel=""
+  local line cmd arg
+  local here target size answer oldpwd
+  local restore_pwd
 
   if ! mountpoint -q "$mount"; then
     echo "Yggdrasil is not mounted"
@@ -170,16 +175,13 @@ yggcache() {
     return 1
   fi
 
-  local cache_root
   cache_root="$(
     rclone rc vfs/stats |
       python3 -c 'import json,sys; print(json.load(sys.stdin)["diskCache"]["path"])'
   )" || return 1
 
-  local rel=""
-
   while true; do
-    local here="$cache_root"
+    here="$cache_root"
     [[ -n "$rel" ]] && here="$cache_root/$rel"
 
     clear
@@ -252,8 +254,7 @@ PY
     echo
     printf "yggcache:/%s> " "$rel"
 
-    local line cmd arg
-    read -r line
+    IFS= read -r line || return 0
 
     [[ -z "$line" ]] && continue
 
@@ -300,7 +301,7 @@ PY
           continue
         fi
 
-        local target="$here/$arg"
+        target="$here/$arg"
 
         if [[ ! -e "$target" ]]; then
           echo "Not cached: $arg"
@@ -308,7 +309,6 @@ PY
           continue
         fi
 
-        local size
         size="$(
           python3 - "$target" <<'PY'
 import os
@@ -352,13 +352,12 @@ PY
         echo "The Backblaze copy will NOT be deleted."
         printf "Continue? [y/N] "
 
-        local answer
         read -r answer
 
         [[ "$answer" == [yY] ]] || continue
 
-        local oldpwd="$PWD"
-        local restore_pwd=0
+        oldpwd="$PWD"
+        restore_pwd=0
 
         if [[ "$PWD" == "$mount" || "$PWD" == "$mount/"* ]]; then
           cd "$HOME" || return 1
