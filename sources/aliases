@@ -1,0 +1,501 @@
+# ==============================================================================
+# !!!!!! TOOLING — BEGIN !!!!!!
+# Applies when: Always, unless there is a clear reason not to use it.
+# General development command-line tools.
+# ==============================================================================
+
+alias python='python3'
+alias pypy='pypy3'
+alias pip='pip3'
+
+alias vact="source ./venv/bin/activate"
+
+alias vi=vim
+
+# ==============================================================================
+# !!!!!! CUDA/GPU — BEGIN !!!!!!
+# Applies when: CUDA is available.
+# CUDA device selection and GPU monitoring.
+# ==============================================================================
+
+# Abbreviate CUDA_VISIBLE_DEVICES to cvd
+cvd() {
+  CUDA_VISIBLE_DEVICES=$1 "${@:2}"
+}
+
+alias wn="watch -n 1 nvidia-smi"
+alias wg="watch -n 1 -c gpustat --color"
+
+# ==============================================================================
+# !!!!!! SLURM — BEGIN !!!!!!
+# Applies when: The machine is a Slurm node.
+# Slurm job and cluster controls.
+# ==============================================================================
+
+# Attach to the first running job in Slurm
+sa() {
+  jid=$(squeue -u "$USER" --states=R -h -o "%A" | head -n1)
+  [ -n "$jid" ] && srun --jobid="$jid" --pty --overlap zsh || echo "No RUNNING jobs."
+}
+
+alias sq="squeue"
+alias sc="scancel"
+
+# Cluster-specific commands:
+# !!! BOOTSTRAP_RESOLVE_BEGIN: SLURM_HELPER_ALIASES; suggested=~/slurm/sbatch.sh and ~/slurm/nodes.sh !!!
+alias sb="sbatch ~/slurm/sbatch.sh"
+alias sn="~/slurm/nodes.sh"
+# !!! BOOTSTRAP_RESOLVE_END: SLURM_HELPER_ALIASES !!!
+
+# ==============================================================================
+# !!!!!! CONDA VIM WRAPPER — BEGIN !!!!!!
+# Applies when: Vim cannot be installed system-wide and Conda is available.
+# Conda-backed Vim fallback for restricted machines.
+# ==============================================================================
+
+# This is G2 Cluster-specific. Because we can't install system-wide packages,
+# running vim will first install vim to the current conda environment if needed.
+vim() {
+  if conda list | grep -q "^vim "; then
+    command vim "$@"
+  else
+    echo "vim not found in current conda env: installing..."
+    conda install -y vim
+    command vim "$@"
+  fi
+}
+
+# ==============================================================================
+# !!!!!! CONDA GPUSTAT WRAPPER — BEGIN !!!!!!
+# Applies when: CUDA and Conda are available and no usable global gpustat exists.
+# Conda-backed gpustat fallback for restricted machines.
+# ==============================================================================
+
+gpustat() {
+  if conda list | grep -q "^gpustat "; then
+    command gpustat "$@"
+  else
+    echo "gpustat not found in current conda env: installing..."
+    conda install -y gpustat
+    command gpustat "$@"
+  fi
+}
+
+# ==============================================================================
+# !!!!!! YGGDRASIL — BEGIN !!!!!!
+# Applies when: The machine is a Linux server. Do not use this section on macOS.
+# Yggdrasil mount controls.
+# ==============================================================================
+
+ygg() {
+  if mountpoint -q "$HOME/yggdrasil"; then
+    echo "Yggdrasil already mounted"
+    return 0
+  fi
+
+  mkdir -p "$HOME/yggdrasil" "$HOME/.cache"
+
+  nohup rclone mount yggdrasil:syphon-yggdrasil "$HOME/yggdrasil" \
+    --vfs-cache-mode full \
+    --dir-cache-time 10s \
+    --rc \
+    --rc-addr 127.0.0.1:5572 \
+    >"$HOME/.cache/yggdrasil-rclone.log" 2>&1 &
+
+  sleep 1
+
+  if mountpoint -q "$HOME/yggdrasil"; then
+    echo "Yggdrasil mounted at ~/yggdrasil"
+  else
+    echo "Yggdrasil mount failed"
+    return 1
+  fi
+}
+
+yggstat() {
+  if ! mountpoint -q "$HOME/yggdrasil"; then
+    echo "Yggdrasil is not mounted"
+    return 1
+  fi
+
+  rclone rc vfs/queue
+}
+
+yggoff() {
+  if ! mountpoint -q "$HOME/yggdrasil"; then
+    echo "Yggdrasil is not mounted"
+    return 0
+  fi
+
+  local stats
+  stats="$(rclone rc vfs/stats)" || return 1
+
+  local pending
+  pending="$(
+    printf '%s' "$stats" |
+      python3 -c '
+import json
+import sys
+
+d = json.load(sys.stdin)["diskCache"]
+print(d["uploadsQueued"] + d["uploadsInProgress"])
+'
+  )" || return 1
+
+  if (( pending != 0 )); then
+    echo "Refusing to unmount: $pending upload(s) pending"
+    return 1
+  fi
+
+  if command -v fusermount3 >/dev/null 2>&1; then
+    fusermount3 -u "$HOME/yggdrasil" || return 1
+  elif command -v fusermount >/dev/null 2>&1; then
+    fusermount -u "$HOME/yggdrasil" || return 1
+  else
+    umount "$HOME/yggdrasil" || return 1
+  fi
+
+  echo "Yggdrasil unmounted"
+}
+
+yggcache() {
+  local mount="$HOME/yggdrasil"
+
+  if ! mountpoint -q "$mount"; then
+    echo "Yggdrasil is not mounted"
+    return 1
+  fi
+
+  if ! rclone rc vfs/stats >/dev/null 2>&1; then
+    echo "Yggdrasil RC is not available"
+    return 1
+  fi
+
+  local cache_root
+  cache_root="$(
+    rclone rc vfs/stats |
+      python3 -c 'import json,sys; print(json.load(sys.stdin)["diskCache"]["path"])'
+  )" || return 1
+
+  local rel=""
+
+  while true; do
+    local here="$cache_root"
+    [[ -n "$rel" ]] && here="$cache_root/$rel"
+
+    clear
+    printf 'Yggdrasil cache: /%s\n\n' "$rel"
+
+    python3 - "$here" <<'PY'
+import os
+import sys
+
+root = sys.argv[1]
+
+def usage(path):
+    total = 0
+
+    def add(p):
+        nonlocal total
+        try:
+            total += os.lstat(p).st_blocks * 512
+        except FileNotFoundError:
+            pass
+
+    add(path)
+
+    if os.path.isdir(path):
+        for base, dirs, files in os.walk(path):
+            for name in dirs:
+                add(os.path.join(base, name))
+            for name in files:
+                add(os.path.join(base, name))
+
+    return total
+
+def human(n):
+    units = ["B", "KiB", "MiB", "GiB", "TiB"]
+    value = float(n)
+
+    for unit in units:
+        if value < 1024 or unit == units[-1]:
+            return f"{value:7.1f} {unit}"
+        value /= 1024
+
+try:
+    entries = list(os.scandir(root))
+except FileNotFoundError:
+    print("Cache directory disappeared")
+    sys.exit(1)
+
+items = []
+
+for entry in entries:
+    size = usage(entry.path)
+    items.append(
+        (
+            size,
+            entry.is_dir(follow_symlinks=False),
+            entry.name,
+        )
+    )
+
+items.sort(reverse=True)
+
+for size, is_dir, name in items:
+    marker = "/" if is_dir else ""
+    print(f"{human(size)}   {name}{marker}")
+
+print()
+print(f"Total: {human(usage(root))}")
+PY
+
+    echo
+    printf "yggcache:/%s> " "$rel"
+
+    local line cmd arg
+    read -r line
+
+    [[ -z "$line" ]] && continue
+
+    cmd="${line%% *}"
+
+    if [[ "$line" == *" "* ]]; then
+      arg="${line#* }"
+    else
+      arg=""
+    fi
+
+    case "$cmd" in
+      q|quit)
+        return 0
+        ;;
+
+      cd)
+        if [[ "$arg" == ".." ]]; then
+          if [[ -n "$rel" ]]; then
+            rel="${rel:h}"
+            [[ "$rel" == "." ]] && rel=""
+          fi
+          continue
+        fi
+
+        if [[ -z "$arg" || "$arg" == "." || "$arg" == */* ]]; then
+          echo "Use: cd <visible-directory>"
+          sleep 1
+          continue
+        fi
+
+        if [[ -d "$here/$arg" ]]; then
+          rel="${rel:+$rel/}$arg"
+        else
+          echo "Not a cached directory: $arg"
+          sleep 1
+        fi
+        ;;
+
+      purge)
+        if [[ -z "$arg" || "$arg" == "." || "$arg" == ".." || "$arg" == */* ]]; then
+          echo "Use: purge <visible-entry>"
+          sleep 1
+          continue
+        fi
+
+        local target="$here/$arg"
+
+        if [[ ! -e "$target" ]]; then
+          echo "Not cached: $arg"
+          sleep 1
+          continue
+        fi
+
+        local size
+        size="$(
+          python3 - "$target" <<'PY'
+import os
+import sys
+
+path = sys.argv[1]
+total = 0
+
+def add(p):
+    global total
+    try:
+        total += os.lstat(p).st_blocks * 512
+    except FileNotFoundError:
+        pass
+
+add(path)
+
+if os.path.isdir(path):
+    for base, dirs, files in os.walk(path):
+        for name in dirs:
+            add(os.path.join(base, name))
+        for name in files:
+            add(os.path.join(base, name))
+
+units = ["B", "KiB", "MiB", "GiB", "TiB"]
+value = float(total)
+
+for unit in units:
+    if value < 1024 or unit == units[-1]:
+        print(f"{value:.1f} {unit}")
+        break
+    value /= 1024
+PY
+        )"
+
+        echo
+        echo "Evict LOCAL cache only:"
+        echo "  /${rel:+$rel/}$arg"
+        echo "  $size"
+        echo
+        echo "The Backblaze copy will NOT be deleted."
+        printf "Continue? [y/N] "
+
+        local answer
+        read -r answer
+
+        [[ "$answer" == [yY] ]] || continue
+
+        local oldpwd="$PWD"
+        local restore_pwd=0
+
+        if [[ "$PWD" == "$mount" || "$PWD" == "$mount/"* ]]; then
+          cd "$HOME" || return 1
+          restore_pwd=1
+        fi
+
+        if ! yggoff; then
+          echo "Cannot purge while uploads are pending"
+          sleep 2
+
+          if (( restore_pwd )); then
+            cd "$oldpwd" 2>/dev/null || true
+          fi
+
+          continue
+        fi
+
+        rm -rf -- "$target" || return 1
+
+        ygg || return 1
+
+        if (( restore_pwd )); then
+          cd "$oldpwd" 2>/dev/null || cd "$mount"
+        fi
+
+        cache_root="$(
+          rclone rc vfs/stats |
+            python3 -c 'import json,sys; print(json.load(sys.stdin)["diskCache"]["path"])'
+        )" || return 1
+
+        echo "Evicted $arg ($size)"
+        sleep 1
+        ;;
+
+      help|h|\?)
+        echo "Commands:"
+        echo "  cd <dir>       enter a cached directory"
+        echo "  cd ..          go up one directory"
+        echo "  purge <entry>  evict a visible file or directory"
+        echo "  q              quit"
+        sleep 2
+        ;;
+
+      *)
+        echo "Commands: cd <dir>, cd .., purge <entry>, q"
+        sleep 1
+        ;;
+    esac
+  done
+}
+
+# ==============================================================================
+# !!!!!! PERSONAL MACHINE ONLY — BEGIN !!!!!!
+# Applies when: Configuring the user's personal machine.
+# The following commands are specific to the personal machine.
+# ==============================================================================
+
+# !!! BOOTSTRAP_RESOLVE_BEGIN: SYNOLOGY_DRIVE_ROOT; suggested=$HOME/SynologyDrive !!!
+SYNOLOGY_DRIVE_ROOT="$HOME/SynologyDrive"
+# !!! BOOTSTRAP_RESOLVE_END: SYNOLOGY_DRIVE_ROOT !!!
+
+# The Logbook System
+# Applies when: The resolved SynologyDrive root contains the expected Archives.
+alias dly='cd "$SYNOLOGY_DRIVE_ROOT/Archives/Daily Log/$(date +%Y)/" && vi "$(date +%-m).md"'
+alias rt='python "$SYNOLOGY_DRIVE_ROOT/Archives/Routine/routine_watcher.py"'
+alias fp='python "$SYNOLOGY_DRIVE_ROOT/Archives/fireplace/fireplace_watcher.py"'
+alias humans='python "$SYNOLOGY_DRIVE_ROOT/Archives/humans/humans_watcher.py"'
+alias archives='python "$SYNOLOGY_DRIVE_ROOT/Archives/archives_watcher.py"'
+
+lab() {
+  local research_root="$SYNOLOGY_DRIVE_ROOT/1. Research/Active"
+  local dirs choice dir
+
+  dirs=(${(f)"$(find "$research_root" -mindepth 1 -maxdepth 2 -type d -name notes \
+    | sed "s#^$research_root/##" \
+    | sort)"})
+
+  (( ${#dirs[@]} )) || { echo "No notes directories found under $research_root" >&2; return 1; }
+
+  printf '%s\n' "Lab notes:"
+  for i in {1..${#dirs[@]}}; do
+    printf '%d  %s\n' "$i" "$dirs[$i]"
+  done
+
+  printf 'Select 1-%d, or q to cancel: ' "${#dirs[@]}"
+  IFS= read -r choice
+
+  [[ "$choice" == q ]] && return
+  [[ "$choice" == <-> ]] || return 1
+  (( choice >= 1 && choice <= ${#dirs[@]} )) || return 1
+
+  dir="$dirs[$choice]"
+  [ -n "$dir" ] && (cd "$research_root/$dir" && vim notes.md)
+}
+
+toy() {
+  pushd "$SYNOLOGY_DRIVE_ROOT/Archives/tomorrow-of-yesterday" > /dev/null || return 1
+  ./venv/bin/python main.py
+  local rc=$?
+  popd > /dev/null 2>&1
+  return $rc
+}
+
+vpn() {
+  local vpn_bin="/opt/cisco/secureclient/bin/vpn"
+  local host="cuvpn.cuvpn.cornell.edu"
+  local cmd="${1:-}"
+
+  case "$cmd" in
+    check|status)
+      # Do not pipe/chase Cisco's interactive prompt; direct subcommand behaves best.
+      "$vpn_bin" stats
+      ;;
+    connect|up)
+      "$vpn_bin" connect "$host"
+      ;;
+    terminate|kill|reset)
+      echo "Terminating Cisco Secure Client / vpn processes..."
+      osascript -e 'quit app "Cisco Secure Client"' >/dev/null 2>&1 || true
+      pkill -f "Cisco Secure Client" >/dev/null 2>&1 || true
+      pkill -f "/opt/cisco/secureclient/bin/vpn" >/dev/null 2>&1 || true
+      pkill -f "Cisco Secure Client.*vpn" >/dev/null 2>&1 || true
+      pgrep -af "Cisco|secureclient|/opt/cisco/secureclient/bin/vpn" || echo "No matching Cisco/vpn processes remain."
+      ;;
+    ""|help|-h|--help)
+      cat <<'EOF'
+Usage: vpn [check|connect|terminate]
+  vpn check       Run Cisco VPN stats directly; includes duration/expiry when Cisco reports it
+  vpn connect     Connect to cuvpn.cuvpn.cornell.edu
+  vpn terminate   Quit/kill Cisco Secure Client and vpn CLI instances
+EOF
+      ;;
+    *)
+      echo "Unknown vpn command: $cmd" >&2
+      echo "Usage: vpn [check|connect|terminate]" >&2
+      return 2
+      ;;
+  esac
+}
