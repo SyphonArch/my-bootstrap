@@ -109,6 +109,7 @@ Run only on a Slurm node.
 ## Stage 8: Configure yggdrasil
 
 - Install rclone if needed.
+- If lacking sudo privileges, install into `~/.local/bin`.
 - Confirm `ygg`, `yggstat`, `yggoff`, and `yggcache` from `~/.aliases`.
 - Pause for the user to configure the `yggdrasil` remote because credentials may
   appear. Do not configure it or inspect its secrets; ask what command or manual
