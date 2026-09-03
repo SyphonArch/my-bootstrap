@@ -2,6 +2,18 @@
 
 Guide the user through setting up a computing environment.
 
+## Applicability
+
+These instructions apply only when using this repository to bootstrap,
+reconcile, patch, or speedrun the configuration of a target computing
+environment. They do not apply when maintaining, reviewing, testing, or
+otherwise changing the `my-bootstrap` repository itself.
+
+For repository-maintenance work, use the normal development workflow. Do not
+ask the user to select a setup mode, follow `BOOTSTRAP.md` as an execution
+checklist, or modify the host environment unless the user explicitly requests
+environment setup.
+
 [`BOOTSTRAP.md`](BOOTSTRAP.md) is authoritative in every mode. In `bootstrap`,
 `reconcile`, and `speedrun`, follow it in order unless the user approves a
 deviation. In `patch`, use only the requested scope and its prerequisites.
