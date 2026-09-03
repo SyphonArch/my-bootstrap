@@ -106,14 +106,18 @@ ygg() {
     --rc-addr 127.0.0.1:5572 \
     >"$HOME/.cache/yggdrasil-rclone.log" 2>&1 &
 
-  sleep 1
+  # Remote initialization may take several seconds, so poll for up to 10 seconds.
+  local attempt
+  for attempt in {1..10}; do
+    if mountpoint -q "$HOME/yggdrasil"; then
+      echo "Yggdrasil mounted at ~/yggdrasil"
+      return 0
+    fi
+    sleep 1
+  done
 
-  if mountpoint -q "$HOME/yggdrasil"; then
-    echo "Yggdrasil mounted at ~/yggdrasil"
-  else
-    echo "Yggdrasil mount failed"
-    return 1
-  fi
+  echo "Yggdrasil mount failed after 10 seconds"
+  return 1
 }
 
 yggstat() {
