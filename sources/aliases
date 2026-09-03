@@ -98,7 +98,7 @@ ygg() {
     --links \
     --vfs-fast-fingerprint \
     --vfs-cache-mode full \
-    --dir-cache-time 10s \
+    --vfs-cache-max-age 60d \
     --rc \
     --rc-addr 127.0.0.1:5572 \
     >"$HOME/.cache/yggdrasil-rclone.log" 2>&1 &
