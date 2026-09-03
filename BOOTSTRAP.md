@@ -71,8 +71,9 @@ This stage is read-only and may run outside tmux.
 
 - For a new install, confirm a Miniconda version and exact path under `$HOME`.
 - Install and validate Miniconda without creating unspecified environments.
-- Initialize Conda for zsh with `base` activated by default. Validate in a new
-  zsh session.
+- Initialize Conda for zsh with `base` activated by default and set
+  `changeps1: false` so the shell theme alone displays the active environment.
+  Validate in a new zsh session.
 
 ## Stage 5: Configure GPU monitoring
 
