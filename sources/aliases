@@ -104,7 +104,7 @@ ygg() {
     --rc \
     --rc-no-auth \
     --rc-addr 127.0.0.1:5572 \
-    >"$HOME/.cache/yggdrasil-rclone.log" 2>&1 &
+    >"$HOME/.cache/yggdrasil-rclone.log" 2>&1 &!
 
   # Remote initialization may take several seconds, so poll for up to 10 seconds.
   local attempt
