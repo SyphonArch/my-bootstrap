@@ -94,13 +94,13 @@ ygg() {
 
   mkdir -p "$HOME/yggdrasil" "$HOME/.cache"
 
-  # Assumes each server works mostly locally; external changes become visible after one week or a manual yggrefresh.
+  # Assumes each server works mostly locally; external changes become visible after 24 hours or a manual yggrefresh.
   nohup rclone mount yggdrasil:syphon-yggdrasil "$HOME/yggdrasil" \
     --links \
     --vfs-fast-fingerprint \
     --vfs-cache-mode full \
     --vfs-cache-max-age 60d \
-    --dir-cache-time 1w \
+    --dir-cache-time 24h \
     --rc \
     --rc-no-auth \
     --rc-addr 127.0.0.1:5572 \
@@ -551,4 +551,3 @@ vpnfix() {
   sudo dscacheutil -flushcache
   sudo killall -HUP mDNSResponder
 }
-
