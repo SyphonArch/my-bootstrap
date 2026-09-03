@@ -99,6 +99,9 @@ ygg() {
     --links \
     --vfs-fast-fingerprint \
     --vfs-cache-mode full \
+    --file-perms 0775 \
+    --dir-perms 0775 \
+    --umask 0000 \
     --vfs-cache-max-age 60d \
     --dir-cache-time 24h \
     --rc \
