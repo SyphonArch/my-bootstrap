@@ -94,12 +94,15 @@ ygg() {
 
   mkdir -p "$HOME/yggdrasil" "$HOME/.cache"
 
+  # Assumes each server works mostly locally; external changes become visible after one week or a manual yggrefresh.
   nohup rclone mount yggdrasil:syphon-yggdrasil "$HOME/yggdrasil" \
     --links \
     --vfs-fast-fingerprint \
     --vfs-cache-mode full \
     --vfs-cache-max-age 60d \
+    --dir-cache-time 1w \
     --rc \
+    --rc-no-auth \
     --rc-addr 127.0.0.1:5572 \
     >"$HOME/.cache/yggdrasil-rclone.log" 2>&1 &
 
@@ -120,6 +123,11 @@ yggstat() {
   fi
 
   rclone rc vfs/queue
+}
+
+yggrefresh() {
+  rclone rc vfs/forget >/dev/null &&
+    echo "Yggdrasil refreshed"
 }
 
 yggoff() {
