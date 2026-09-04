@@ -127,7 +127,50 @@ yggstat() {
     return 1
   fi
 
-  rclone rc vfs/queue
+  local queue stats vfs_stats
+  local queued uploads_queued uploads_active cache_errors cache_in_use cache_out_of_space
+  local active_transfers active_checks historical_errors fatal_error retry_error
+  local mount_user_pids="unavailable"
+  local mount_users="unavailable"
+
+  # These RC responses are a best-effort snapshot. Rclone does not expose one
+  # atomic idle state covering FUSE users, transfers, uploads, and renames.
+  queue="$(rclone rc vfs/queue)" || return 1
+  stats="$(rclone rc core/stats)" || return 1
+  vfs_stats="$(rclone rc vfs/stats)" || return 1
+  queued="$(printf '%s' "$queue" | python3 -c 'import json, sys; print(len(json.load(sys.stdin)["queue"]))')" || return 1
+  read -r active_transfers active_checks historical_errors fatal_error retry_error <<<"$(
+    printf '%s' "$stats" |
+      python3 -c 'import json, sys; s = json.load(sys.stdin); print(len(s.get("transferring", [])), len(s.get("checking", [])), int(s.get("errors", 0)), int(bool(s.get("fatalError", False))), int(bool(s.get("retryError", False))))'
+  )" || return 1
+  read -r uploads_queued uploads_active cache_errors cache_in_use cache_out_of_space <<<"$(
+    printf '%s' "$vfs_stats" |
+      python3 -c 'import json, sys; s = json.load(sys.stdin); d = s["diskCache"]; print(int(d["uploadsQueued"]), int(d["uploadsInProgress"]), int(d["erroredFiles"]), int(s["inUse"]), int(bool(d["outOfSpace"])))'
+  )" || return 1
+
+  # FUSE users catch operations that need not appear as byte transfers, such
+  # as a process whose working directory or open file is inside the mount.
+  if command -v fuser >/dev/null 2>&1; then
+    mount_user_pids="$(fuser -m "$HOME/yggdrasil" 2>/dev/null | xargs)"
+    mount_users="$(printf '%s\n' "$mount_user_pids" | awk '{ print NF }')"
+  fi
+
+  echo "Yggdrasil activity snapshot (some counters may overlap):"
+  echo "  VFS queue entries:       $queued"
+  echo "  uploads queued:          $uploads_queued"
+  echo "  uploads in progress:     $uploads_active"
+  echo "  active transfers:        $active_transfers"
+  echo "  active checks:           $active_checks"
+  echo "  cache files with errors: $cache_errors"
+  echo "  cache entries in use:    $cache_in_use"
+  echo "  cache out of space:      $cache_out_of_space"
+  echo "  processes using mount:   $mount_users"
+  if [[ "$mount_user_pids" != "unavailable" && -n "$mount_user_pids" ]]; then
+    echo "  mount-user PIDs:         $mount_user_pids"
+  fi
+  echo "  historical errors:       $historical_errors"
+  echo "  sticky fatal/retry:      $fatal_error/$retry_error"
+  echo
 }
 
 yggrefresh() {
@@ -155,53 +198,8 @@ yggoff() {
   fi
 
   if (( force )); then
-    local queue stats vfs_stats pid_json pid
-    local queued uploads_queued uploads_active cache_errors cache_in_use cache_out_of_space
-    local active_transfers active_checks historical_errors fatal_error retry_error
-    local mount_user_pids="unavailable"
-    local mount_users="unavailable"
-    local answer
-
-    # These RC responses are a best-effort snapshot. Rclone does not expose one
-    # atomic idle state covering FUSE users, transfers, uploads, and renames.
-    queue="$(rclone rc vfs/queue)" || return 1
-    stats="$(rclone rc core/stats)" || return 1
-    vfs_stats="$(rclone rc vfs/stats)" || return 1
-    pid_json="$(rclone rc core/pid)" || return 1
-    queued="$(printf '%s' "$queue" | python3 -c 'import json, sys; print(len(json.load(sys.stdin)["queue"]))')" || return 1
-    read -r active_transfers active_checks historical_errors fatal_error retry_error <<<"$(
-      printf '%s' "$stats" |
-        python3 -c 'import json, sys; s = json.load(sys.stdin); print(len(s.get("transferring", [])), len(s.get("checking", [])), int(s.get("errors", 0)), int(bool(s.get("fatalError", False))), int(bool(s.get("retryError", False))))'
-    )" || return 1
-    read -r uploads_queued uploads_active cache_errors cache_in_use cache_out_of_space <<<"$(
-      printf '%s' "$vfs_stats" |
-        python3 -c 'import json, sys; s = json.load(sys.stdin); d = s["diskCache"]; print(int(d["uploadsQueued"]), int(d["uploadsInProgress"]), int(d["erroredFiles"]), int(s["inUse"]), int(bool(d["outOfSpace"])))'
-    )" || return 1
-    pid="$(printf '%s' "$pid_json" | python3 -c 'import json, sys; print(int(json.load(sys.stdin)["pid"]))')" || return 1
-
-    # FUSE users catch operations that need not appear as byte transfers, such
-    # as a process whose working directory or open file is inside the mount.
-    if command -v fuser >/dev/null 2>&1; then
-      mount_user_pids="$(fuser -m "$HOME/yggdrasil" 2>/dev/null | xargs)"
-      mount_users="$(printf '%s\n' "$mount_user_pids" | awk '{ print NF }')"
-    fi
-
-    echo "Yggdrasil activity snapshot (some counters may overlap):"
-    echo "  VFS queue entries:       $queued"
-    echo "  uploads queued:          $uploads_queued"
-    echo "  uploads in progress:     $uploads_active"
-    echo "  active transfers:        $active_transfers"
-    echo "  active checks:           $active_checks"
-    echo "  cache files with errors: $cache_errors"
-    echo "  cache entries in use:    $cache_in_use"
-    echo "  cache out of space:      $cache_out_of_space"
-    echo "  processes using mount:   $mount_users"
-    if [[ "$mount_user_pids" != "unavailable" && -n "$mount_user_pids" ]]; then
-      echo "  mount-user PIDs:         $mount_user_pids"
-    fi
-    echo "  historical errors:       $historical_errors"
-    echo "  sticky fatal/retry:      $fatal_error/$retry_error"
-    echo
+    local pid_json pid answer
+    echo "Run yggstat manually and review its activity snapshot before confirming."
     echo "Forced unmount can interrupt reads, writes, or metadata operations."
     printf "Force unmount anyway? [y/N] "
     if ! read -r answer; then
@@ -218,6 +216,8 @@ yggoff() {
         ;;
     esac
 
+    pid_json="$(rclone rc core/pid)" || return 1
+    pid="$(printf '%s' "$pid_json" | python3 -c 'import json, sys; print(int(json.load(sys.stdin)["pid"]))')" || return 1
     rclone rc core/quit >/dev/null || return 1
     local attempt
     for attempt in {1..3}; do
