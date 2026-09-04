@@ -94,7 +94,6 @@ ygg() {
 
   mkdir -p "$HOME/yggdrasil" "$HOME/.cache"
 
-  # Assumes each server works mostly locally; external changes become visible after 24 hours or a manual yggrefresh.
   nohup rclone mount yggdrasil:syphon-yggdrasil "$HOME/yggdrasil" \
     --links \
     --vfs-fast-fingerprint \
@@ -103,7 +102,6 @@ ygg() {
     --dir-perms 0775 \
     --umask 0000 \
     --vfs-cache-max-age 60d \
-    --dir-cache-time 24h \
     --rc \
     --rc-no-auth \
     --rc-addr 127.0.0.1:5572 \
