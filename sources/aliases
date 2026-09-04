@@ -109,9 +109,9 @@ ygg() {
     --rc-addr 127.0.0.1:5572 \
     >"$HOME/.cache/yggdrasil-rclone.log" 2>&1 &!
 
-  # Remote initialization may take several seconds, so poll for up to 10 seconds.
+  # Remote initialization may take several seconds, so poll for up to 30 seconds.
   local attempt
-  for attempt in {1..10}; do
+  for attempt in {1..30}; do
     if mountpoint -q "$HOME/yggdrasil"; then
       echo "Yggdrasil mounted at ~/yggdrasil"
       return 0
@@ -119,7 +119,7 @@ ygg() {
     sleep 1
   done
 
-  echo "Yggdrasil mount failed after 10 seconds"
+  echo "Yggdrasil mount failed after 30 seconds"
   return 1
 }
 
@@ -138,28 +138,71 @@ yggrefresh() {
 }
 
 yggoff() {
+  local force=0
+  if (( $# > 1 )); then
+    echo "Usage: yggoff [--force]"
+    return 2
+  fi
+  if (( $# == 1 )); then
+    if [[ "$1" != "--force" ]]; then
+      echo "Usage: yggoff [--force]"
+      return 2
+    fi
+    force=1
+  fi
+
   if ! mountpoint -q "$HOME/yggdrasil"; then
     echo "Yggdrasil is not mounted"
     return 0
   fi
 
-  local stats
-  stats="$(rclone rc vfs/stats)" || return 1
+  if (( force )); then
+    local queue stats pid_json pending active errors unsafe pid
+    queue="$(rclone rc vfs/queue)" || return 1
+    stats="$(rclone rc core/stats)" || return 1
+    pid_json="$(rclone rc core/pid)" || return 1
+    pending="$(printf '%s' "$queue" | python3 -c 'import json, sys; print(len(json.load(sys.stdin)["queue"]))')" || return 1
+    read -r active errors unsafe <<<"$(
+      printf '%s' "$stats" |
+        python3 -c 'import json, sys; s = json.load(sys.stdin); print(len(s.get("transferring", [])) + len(s.get("checking", [])), int(s["errors"]), int(bool(s["fatalError"]) or bool(s["retryError"])))'
+    )" || return 1
+    pid="$(printf '%s' "$pid_json" | python3 -c 'import json, sys; print(int(json.load(sys.stdin)["pid"]))')" || return 1
+    if (( pending != 0 || active != 0 || errors != 0 || unsafe != 0 )); then
+      echo "Refusing forced unmount: queue=$pending active=$active errors=$errors fatal_or_retry=$unsafe"
+      return 1
+    fi
 
-  local pending
-  pending="$(
-    printf '%s' "$stats" |
-      python3 -c '
-import json
-import sys
+    rclone rc core/quit >/dev/null || return 1
+    local attempt
+    for attempt in {1..3}; do
+      if ! kill -0 "$pid" 2>/dev/null &&
+          ! findmnt -rn -M "$HOME/yggdrasil" >/dev/null; then
+        echo "Yggdrasil unmounted"
+        return 0
+      fi
+      sleep 1
+    done
 
-d = json.load(sys.stdin)["diskCache"]
-print(d["uploadsQueued"] + d["uploadsInProgress"])
-'
-  )" || return 1
+    if findmnt -rn -M "$HOME/yggdrasil" >/dev/null; then
+      if command -v fusermount3 >/dev/null 2>&1; then
+        fusermount3 -uz "$HOME/yggdrasil" || return 1
+      elif command -v fusermount >/dev/null 2>&1; then
+        fusermount -uz "$HOME/yggdrasil" || return 1
+      else
+        umount -l "$HOME/yggdrasil" || return 1
+      fi
+    fi
 
-  if (( pending != 0 )); then
-    echo "Refusing to unmount: $pending upload(s) pending"
+    for attempt in {1..10}; do
+      if ! kill -0 "$pid" 2>/dev/null &&
+          ! findmnt -rn -M "$HOME/yggdrasil" >/dev/null; then
+        echo "Yggdrasil force-unmounted"
+        return 0
+      fi
+      sleep 1
+    done
+
+    echo "Yggdrasil forced shutdown failed: process or mount is still present"
     return 1
   fi
 
