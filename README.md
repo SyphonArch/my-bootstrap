@@ -6,6 +6,8 @@ computing environment.
 This public repository records my setup preferences across machines. It includes
 directory names but no secrets.
 
+A rushed bootstrap on a new machine takes about 30 minutes.
+
 ## Quick start
 
 ```sh
