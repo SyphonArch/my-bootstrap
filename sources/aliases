@@ -117,7 +117,7 @@ ygg() {
     sleep 1
   done
 
-  echo "Yggdrasil mount failed after 30 seconds"
+  echo "Yggdrasil not mounted after 30 seconds. Check $HOME/.cache/yggdrasil-rclone.log for errors or wait longer."
   return 1
 }
 
