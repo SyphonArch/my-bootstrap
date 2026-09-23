@@ -23,8 +23,9 @@ Before starting the agent, add the chosen public key to
 `~/.ssh/authorized_keys` and verify SSH access.
 
 Check Git, curl, and network access; install missing tools for the platform.
-Follow the [Quick start](README.md#quick-start), complete Codex sign-in, and
-select `bootstrap`, `reconcile`, `patch`, or `speedrun` mode.
+Follow the [Quick start](README.md#quick-start), select Codex, Claude Code, or
+both, complete sign-in for the agent you start, and select `bootstrap`,
+`reconcile`, `patch`, or `speedrun` mode.
 
 ## Stage 1: Inspect the system
 

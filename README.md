@@ -13,11 +13,26 @@ A rushed bootstrap on a new machine takes about 30 minutes.
 ```sh
 git clone https://github.com/SyphonArch/my-bootstrap.git
 cd my-bootstrap
+```
+
+Select your AI agent. Install one, or install both and start either one to
+continue.
+
+Codex:
+
+```sh
 curl -fsSL https://chatgpt.com/codex/install.sh | sh
 codex
 ```
 
-After Codex starts, select a mode and follow [`BOOTSTRAP.md`](BOOTSTRAP.md):
+Claude Code:
+
+```sh
+curl -fsSL https://claude.ai/install.sh | bash
+claude
+```
+
+After the agent starts, select a mode and follow [`BOOTSTRAP.md`](BOOTSTRAP.md):
 
 - `bootstrap`: Set up a new or intentionally clean environment.
 - `reconcile`: Bring an existing environment into alignment.
@@ -28,6 +43,7 @@ After Codex starts, select a mode and follow [`BOOTSTRAP.md`](BOOTSTRAP.md):
 ## Contents
 
 - [`AGENTS.md`](AGENTS.md): Interaction, confirmation, safety, and tmux rules.
+- [`CLAUDE.md`](CLAUDE.md): Claude Code entry point that imports `AGENTS.md`.
 - [`BOOTSTRAP.md`](BOOTSTRAP.md): The ordered setup procedure.
 - [`sources/`](sources): Configuration sources and Slurm helper scripts to
   inspect, resolve, and apply during setup.
